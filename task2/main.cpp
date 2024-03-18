@@ -11,7 +11,7 @@
 
 
 float sphereDistance(const glm::vec3& point) {
-    return glm::length(point - glm::vec3(0.0f, 0.0f, 0.0f)) - 1.0f;
+    return glm::length(point - glm::vec3(0.0f, 0.0f, 0.0f)) - 0.1f;
 }
 
 
@@ -38,15 +38,11 @@ glm::vec3 cross(glm::vec3 &vec1, glm::vec3 &vec2)
 
 float sdf(SIREN& model, const glm::vec3 &point) {
     float distance;
-    if (point.x < -1 || point.x > 1 || point.y < -1 || point.y > 1 || point.z < -1 || point.z > 1) {
-        // Подсчитываем расстояние до границы куба, т.к. объекторв вне единичного куба нет (или используем минимальный шаг)
-        glm::vec3 outsideDist = max(glm::abs(point) - glm::vec3(1.0, 1.0, 1.0), 0.01f);
-        distance = outsideDist.length(); 
-    } else {
-        Matrix x(point);
-        Matrix y = model.forward(x);
-        distance = y(0, 0);
-    }
+    // Matrix x(point);
+    // Matrix y = model.forward(x);
+    // distance = y(0, 0);
+    distance = sphereDistance(point);
+    // }
     return distance;
 }
 
@@ -57,7 +53,8 @@ glm::vec3 getNormal(const glm::vec3& p, SIREN& model, float epsilon = 1e-4) {
     float sdfZ = sdf(model, glm::vec3(p.x, p.y, p.z + epsilon)) - sdf(model, glm::vec3(p.x, p.y, p.z - epsilon));
 
     glm::vec3 normal(sdfX, sdfY, sdfZ);
-    return glm::normalize(normal);
+    // return glm::normalize(normal);
+    return sphereNormal(p);
 }
 
 
@@ -70,7 +67,14 @@ glm::vec3 trace(
     float t = 0.0f, distance;
     for (int i = 0; i < 100; ++i) {
         glm::vec3 point = cameraPos + t * rayDir;
-        float distance = sdf(model, point);
+
+        if (point.x < -2 || point.x > 2 || point.y < -2 || point.y > 2 || point.z < -2 || point.z > 2) {
+        // Подсчитываем расстояние до границы куба, т.к. объекторв вне единичного куба нет (или используем минимальный шаг)
+            glm::vec3 outsideDist = max(glm::abs(point) - glm::vec3(2.0, 2.0, 2.0), 0.01f);
+            distance = outsideDist.length(); 
+        } else {
+            distance = sdf(model, point);
+        }
         // float distance = sphereDistance(point);
 
         if (distance < 0.00001f) {

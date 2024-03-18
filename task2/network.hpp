@@ -92,7 +92,6 @@ private:
     std::vector<Layer*> layers;
 
 public:
-    // Конструктор, инициализирующий сеть из файла
     SIREN(const std::string& filename) {
         std::ifstream file(filename);
         std::string line;
@@ -101,10 +100,9 @@ public:
             std::string layerType;
             size_t inputSize, outputSize;
 
-            iss >> layerType; // Читаем тип слоя
+            iss >> layerType;
 
             if (layerType == "Dense") {
-                // Пропускаем части строки, не содержащие размеры
                 iss.ignore(std::numeric_limits<std::streamsize>::max(), '(');
                 iss >> inputSize;
                 iss.ignore(std::numeric_limits<std::streamsize>::max(), ')');
@@ -113,8 +111,7 @@ public:
 
                 layers.push_back(new DenseLayer(inputSize, outputSize));
             } else if (layerType == "Sin") {
-                float w0 = 30.0; // Предполагаемое значение w0 для SineLayer
-                // Здесь inputSize и outputSize игнорируются, поскольку SineLayer работает поэлементно
+                float w0 = 30.0;
                 layers.push_back(new SineLayer(w0));
             }
         }
