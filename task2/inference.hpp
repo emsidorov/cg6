@@ -35,12 +35,6 @@ Data loadData(const std::string& filename) {
 
 void test(SIREN& model, const Data& data) {
     Matrix output = model.forward(data.x);
-    Matrix errors =  (output - data.y).abs();
-
-    for (int i = 0; i < errors.rows; ++i) {
-        std::cout << errors(i, 0) << std::endl;
-    }
-
     float error = (output - data.y).abs().max();
 
     if (error < 1e-5) {

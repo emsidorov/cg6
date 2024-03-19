@@ -15,6 +15,8 @@ public:
         }
     }
 
+    Matrix() : rows(0), cols(0) {}
+
      Matrix(const glm::vec3& vec) : rows(1), cols(3), data({vec.x, vec.y, vec.z}) {}
 
     float& operator()(size_t row, size_t col) {
@@ -72,10 +74,78 @@ public:
         return result;
     }
 
+    Matrix operator*(const Matrix& rhs) const {
+        assert(rows == rhs.rows && cols == rhs.cols);
+        Matrix result(rows, cols);
+        for (size_t i = 0; i < rows; ++i) {
+            for (size_t j = 0; j < cols; ++j) {
+                result(i, j) = (*this)(i, j) * rhs(i, j);
+            }
+        }
+        return result;
+    }
+
+    Matrix operator/(const Matrix& rhs) const {
+        assert(rows == rhs.rows && cols == rhs.cols);
+        Matrix result(rows, cols);
+        for (size_t i = 0; i < rows; ++i) {
+            for (size_t j = 0; j < cols; ++j) {
+                result(i, j) = (*this)(i, j) / rhs(i, j);
+            }
+        }
+        return result;
+    }
+
+    Matrix operator/(const float& val) const {
+        Matrix result(rows, cols);
+        for (size_t i = 0; i < rows; ++i) {
+            for (size_t j = 0; j < cols; ++j) {
+                result(i, j) = (*this)(i, j) / val;
+            }
+        }
+        return result;
+    }
+
+    Matrix operator*(const float& val) const {
+        Matrix result(rows, cols);
+        for (size_t i = 0; i < rows; ++i) {
+            for (size_t j = 0; j < cols; ++j) {
+                result(i, j) = (*this)(i, j) * val;
+            }
+        }
+        return result;
+    }
+
+    Matrix operator+(const float& val) const {
+        Matrix result(rows, cols);
+        for (size_t i = 0; i < rows; ++i) {
+            for (size_t j = 0; j < cols; ++j) {
+                result(i, j) = (*this)(i, j) + val;
+            }
+        }
+        return result;
+    }
+
+    Matrix sum() const {
+        Matrix sum(1, 1);
+        for (size_t i = 0; i < rows * cols; ++i) {
+            sum.data[0] += data[i];
+        }
+        return sum;
+    }
+
     Matrix abs() const {
         Matrix result(rows, cols);
         for (size_t i = 0; i < rows * cols; ++i) {
             result.data[i] = std::abs(data[i]);
+        }
+        return result;
+    }
+
+    Matrix sqrt() const {
+        Matrix result(rows, cols);
+        for (size_t i = 0; i < rows * cols; ++i) {
+            result.data[i] = std::sqrt(data[i]);
         }
         return result;
     }
