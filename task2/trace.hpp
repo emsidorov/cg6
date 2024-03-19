@@ -1,4 +1,4 @@
-#include "inference.hpp"
+#include "mesh.hpp"
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -57,35 +57,48 @@ glm::vec3 getNormal(const glm::vec3& p, SIREN& model, float epsilon = 1e-4) {
     // return sphereNormal(p);
 }
 
+glm::vec3 getNormalMesh(const glm::vec3& p, Mesh& mesh, float epsilon = 1e-4) {
+    float sdfX = mesh.distance(glm::vec3(p.x + epsilon, p.y, p.z)) - mesh.distance(glm::vec3(p.x - epsilon, p.y, p.z));
+    float sdfY = mesh.distance(glm::vec3(p.x, p.y + epsilon, p.z)) - mesh.distance(glm::vec3(p.x, p.y - epsilon, p.z));
+    float sdfZ = mesh.distance(glm::vec3(p.x, p.y, p.z + epsilon)) - mesh.distance(glm::vec3(p.x, p.y, p.z - epsilon));
+
+    glm::vec3 normal(sdfX, sdfY, sdfZ);
+    return glm::normalize(normal);
+    // return sphereNormal(p);
+}
+
 
 glm::vec3 trace(
     SIREN& model,
+    Mesh& mesh,
     glm::vec3 &lightDir,
     glm::vec3 &cameraPos,
     glm::vec3 &rayDir
 ) {
     float t = 0.0f, distance;
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 200; ++i) {
         glm::vec3 point = cameraPos + t * rayDir;
 
         if (point.x < -1 || point.x > 1 || point.y < -1 || point.y > 1 || point.z < -1 || point.z > 1) {
         // Подсчитываем расстояние до границы куба, т.к. объекторв вне единичного куба нет (или используем минимальный шаг)
-            glm::vec3 outsideDist = max(glm::abs(point) - glm::vec3(1.0, 1.0, 1.0), 0.01f);
+            glm::vec3 outsideDist = glm::max(glm::abs(point) - glm::vec3(1.0, 1.0, 1.0), 0.01f);
             distance = glm::length(outsideDist);
         } else {
             distance = sdf(model, point);
+            // distance = mesh.distance(point);
         }
-        // float distance = sphereDistance(point);
 
-        if (distance < 0.00001f) {
+        // float distance = mesh.distance(point);
+
+        if (distance < 0.001f) {
             glm::vec3 normal = getNormal(point, model);
-            // glm::vec3 normal = sphereNormal(point);
+            // glm::vec3 normal = getNormalMesh(point, mesh);
             float diffuse = std::max(glm::dot(normal, lightDir), 0.08f);
 
             return glm::vec3(diffuse, diffuse, diffuse);
         }
         t += distance;
-        if (t >= 100.0f) break;
+        if (t >= 10.0f) break;
     }
 
     return glm::vec3(0.0f, 0.0f, 0.0f);
@@ -100,9 +113,9 @@ Scene loadScene(const std::string& cameraFile, const std::string& lightFile) {
 }
 
 
-void generate_scene(SIREN& model, const std::string& cameraFile, const std::string& lightFile, int numThreads) {
+void generate_scene(SIREN& model, Mesh& mesh, const std::string& cameraFile, const std::string& lightFile, int numThreads) {
     Scene scene = loadScene(cameraFile, lightFile);
-    int width = 512, height = 512;
+    int width = 64, height = 64;
     float* output = new float[width * height * 3];
     size_t imageSize = width * height * 3 * sizeof(float);
     glm::vec3 cameraPos(scene.camera.pos_x, scene.camera.pos_y, scene.camera.pos_z), lightDir(scene.light.dir_x, scene.light.dir_y, scene.light.dir_z);
@@ -134,7 +147,7 @@ void generate_scene(SIREN& model, const std::string& cameraFile, const std::stri
 
             int index = 3 * (i + j * width);
 
-            glm::vec3 color = trace(model, lightDir, cameraPos, rayDir);
+            glm::vec3 color = trace(model, mesh, lightDir, cameraPos, rayDir);
 
             output[index] = color.x;
             output[index + 1] = color.y;

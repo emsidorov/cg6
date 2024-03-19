@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <limits>
+#include <random>
 
 
 class Layer {
@@ -12,6 +13,7 @@ public:
     virtual void loadWeights(std::ifstream& file) = 0;
     virtual Matrix forward(const Matrix& input) = 0;
     virtual Matrix backward(const Matrix& grad) = 0;
+    virtual void saveWeights(std::ofstream& file) = 0;
     virtual void printWeights() const = 0; // Добавленный метод
 };
 
@@ -19,14 +21,37 @@ public:
 class DenseLayer : public Layer {
 public:
     Matrix weights, biases;
-    float learning_rate = 0.001, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8, beta1_t = beta1, beta2_t = beta2;
+    float learning_rate = 0.00005f, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8, beta1_t = beta1, beta2_t = beta2;
     Matrix m_weights, v_weights;
     Matrix m_biases, v_biases;
     Matrix input_cache;
 
     DenseLayer(size_t input_size, size_t output_size) : weights(output_size, input_size), biases(1, output_size),
                m_weights(output_size, input_size), v_weights(output_size, input_size), m_biases(1, output_size), 
-               v_biases(1, output_size) {}
+               v_biases(1, output_size) 
+    {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        float w0 = 30; // Значение w0 для SIREN
+        float limit = std::sqrt(6.0 / input_size) / w0;
+
+        std::uniform_real_distribution<float> distribution(-limit, limit);
+
+        // Инициализация весов
+        for (size_t i = 0; i < weights.rows; ++i) {
+            for (size_t j = 0; j < weights.cols; ++j) {
+                weights(i, j) = distribution(gen);
+            }
+        }
+
+        // Инициализация смещений нулями или другим выбранным значением
+        for (size_t i = 0; i < biases.rows; ++i) {
+            for (size_t j = 0; j < biases.cols; ++j) {
+                biases(i, j) = 0.0; // Можете выбрать другое значение для инициализации смещений, если это необходимо
+            }
+        }
+               
+    }
 
     void loadWeights(std::ifstream& file) {
         for (size_t i = 0; i < weights.rows; ++i) {
@@ -37,6 +62,19 @@ public:
         for (size_t i = 0; i < biases.rows; ++i) {
             for (size_t j = 0; j < biases.cols; ++j) {
                 file.read(reinterpret_cast<char*>(&biases(i, j)), sizeof(float));
+            }
+        }
+    }
+
+    void saveWeights(std::ofstream& file) {
+        for (size_t i = 0; i < weights.rows; ++i) {
+            for (size_t j = 0; j < weights.cols; ++j) {
+                file.write(reinterpret_cast<const char*>(&weights(i, j)), sizeof(float));
+            }
+        }
+        for (size_t i = 0; i < biases.rows; ++i) {
+            for (size_t j = 0; j < biases.cols; ++j) {
+                file.write(reinterpret_cast<const char*>(&biases(i, j)), sizeof(float));
             }
         }
     }
@@ -122,6 +160,11 @@ public:
         return;
     }
 
+    void saveWeights(std::ofstream& file) {
+        return;
+    }
+
+
     Matrix forward(const Matrix& input) override {
         Matrix prod = input * w0;
         prod_cache = prod;
@@ -206,6 +249,18 @@ public:
         }
         return;
     }
+
+    void saveWeights(const std::string& filename) {
+        std::ofstream weightsFile(filename, std::ios::binary | std::ios::out);
+        if (!weightsFile) {
+            throw std::runtime_error("Не удалось открыть файл для записи весов: " + filename);
+        }
+
+        for (auto layer : layers) {
+            layer->saveWeights(weightsFile);
+        }
+    }
+
 
     void printWeights() const {
         for (size_t i = 0; i < layers.size(); ++i) {
