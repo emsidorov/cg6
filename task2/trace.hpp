@@ -66,7 +66,6 @@ glm::vec3 getNormalMesh(const glm::vec3& p, Mesh& mesh, float epsilon = 1e-4) {
 
 glm::vec3 trace(
     SIREN& model,
-    Mesh& mesh,
     glm::vec3 &lightDir,
     glm::vec3 &cameraPos,
     glm::vec3 &rayDir
@@ -108,14 +107,13 @@ Scene loadScene(const std::string& cameraFile, const std::string& lightFile) {
 
 void render(
     SIREN& model,
-    Mesh& mesh,
     const std::string& cameraFile, 
     const std::string& lightFile, 
     const std::string& saveFile, 
-    int numThreads
+    int image_size
 ) {
     Scene scene = loadScene(cameraFile, lightFile);
-    int width = 128, height = 128;
+    int width = image_size, height = image_size;
     float* output = new float[width * height * 3];
     size_t imageSize = width * height * 3 * sizeof(float);
     glm::vec3 cameraPos(scene.camera.pos_x, scene.camera.pos_y, scene.camera.pos_z), lightDir(scene.light.dir_x, scene.light.dir_y, scene.light.dir_z);
@@ -143,7 +141,7 @@ void render(
 
             int index = 3 * (i + j * width);
 
-            glm::vec3 color = trace(model, mesh, lightDir, cameraPos, rayDir);
+            glm::vec3 color = trace(model, lightDir, cameraPos, rayDir);
 
             output[index] = color.x;
             output[index + 1] = color.y;
