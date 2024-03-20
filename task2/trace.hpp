@@ -4,7 +4,6 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "public_image.h"
 #include <chrono>
-#include <omp.h>
 #include <memory>
 #include <fstream>
 #include "public_camera.h"
@@ -41,8 +40,6 @@ float sdf(SIREN& model, const glm::vec3 &point) {
     Matrix x(point);
     Matrix y = model.forward(x);
     distance = y(0, 0);
-    // distance = sphereDistance(point);
-    // }
     return distance;
 }
 
@@ -54,7 +51,6 @@ glm::vec3 getNormal(const glm::vec3& p, SIREN& model, float epsilon = 1e-4) {
 
     glm::vec3 normal(sdfX, sdfY, sdfZ);
     return glm::normalize(normal);
-    // return sphereNormal(p);
 }
 
 glm::vec3 getNormalMesh(const glm::vec3& p, Mesh& mesh, float epsilon = 1e-4) {
@@ -76,19 +72,16 @@ glm::vec3 trace(
     glm::vec3 &rayDir
 ) {
     float t = 0.0f, distance;
-    for (int i = 0; i < 200; ++i) {
+    for (int i = 0; i < 100; ++i) {
         glm::vec3 point = cameraPos + t * rayDir;
 
         if (point.x < -1 || point.x > 1 || point.y < -1 || point.y > 1 || point.z < -1 || point.z > 1) {
-        // Подсчитываем расстояние до границы куба, т.к. объекторв вне единичного куба нет (или используем минимальный шаг)
             glm::vec3 outsideDist = glm::max(glm::abs(point) - glm::vec3(1.0, 1.0, 1.0), 0.01f);
             distance = glm::length(outsideDist);
         } else {
             distance = sdf(model, point);
             // distance = mesh.distance(point);
         }
-
-        // float distance = mesh.distance(point);
 
         if (distance < 0.001f) {
             glm::vec3 normal = getNormal(point, model);
@@ -98,7 +91,7 @@ glm::vec3 trace(
             return glm::vec3(diffuse, diffuse, diffuse);
         }
         t += distance;
-        if (t >= 10.0f) break;
+        if (t >= 100.0f) break;
     }
 
     return glm::vec3(0.0f, 0.0f, 0.0f);
@@ -113,27 +106,30 @@ Scene loadScene(const std::string& cameraFile, const std::string& lightFile) {
 }
 
 
-void generate_scene(SIREN& model, Mesh& mesh, const std::string& cameraFile, const std::string& lightFile, int numThreads) {
+void render(
+    SIREN& model,
+    Mesh& mesh,
+    const std::string& cameraFile, 
+    const std::string& lightFile, 
+    const std::string& saveFile, 
+    int numThreads
+) {
     Scene scene = loadScene(cameraFile, lightFile);
-    int width = 64, height = 64;
+    int width = 128, height = 128;
     float* output = new float[width * height * 3];
     size_t imageSize = width * height * 3 * sizeof(float);
     glm::vec3 cameraPos(scene.camera.pos_x, scene.camera.pos_y, scene.camera.pos_z), lightDir(scene.light.dir_x, scene.light.dir_y, scene.light.dir_z);
 
-    // Расчёт базиса камеры
-    glm::vec3 pos(scene.camera.pos_x, scene.camera.pos_y, scene.camera.pos_z); // Позиция камеры
-    glm::vec3 target(0.0f, 0.0f, 0.0f); // Цель камеры
-    glm::vec3 up(0.0f, 1.0f, 0.0f); // Вектор "вверх"
+    glm::vec3 pos(scene.camera.pos_x, scene.camera.pos_y, scene.camera.pos_z);
+    glm::vec3 target(0.0f, 0.0f, 0.0f);
+    glm::vec3 up(0.0f, 1.0f, 0.0f);
 
-    glm::vec3 view = glm::normalize(target - pos); // Направление взгляда
+    glm::vec3 view = glm::normalize(target - pos);
     glm::vec3 right = glm::normalize(cross(view, up));
     up = cross(right, view);
 
-    // Расчёт направления луча для каждого пикселя
     float aspectRatio = float(width) / height;
-    float scale = tan(scene.camera.fov_rad / 2.0f); // FOV в радианах
-
-    omp_set_num_threads(numThreads);
+    float scale = tan(scene.camera.fov_rad / 2.0f);
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -157,17 +153,14 @@ void generate_scene(SIREN& model, Mesh& mesh, const std::string& cameraFile, con
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> elapsed = end - start;
-    std::cout << "Time taken for computation: " << elapsed.count() << " ms\n";
+    std::cout << "Time taken for render: " << elapsed.count() / 1000.0f << " s\n";
 
     unsigned char* image = new unsigned char[width * height * 3];
     for (int i = 0; i < width * height * 3; ++i) {
-        image[i] = static_cast<unsigned char>(255 * output[i]); // Предполагается, что output нормализован от 0 до 1
+        image[i] = static_cast<unsigned char>(255 * output[i]);
     }
 
-    // Сохранение изображения
-    stbi_write_png("out_cpu.png", width, height, 3, image, width * 3);
-
-    std::cout << "Image saved as out_cpu.png" << std::endl;
-
+    stbi_write_png(saveFile.c_str(), width, height, 3, image, width * 3);
+    std::cout << "Image saved as " << saveFile.c_str() << std::endl;
     delete[] image;
 }

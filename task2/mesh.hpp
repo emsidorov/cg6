@@ -111,9 +111,9 @@ public:
                 isInside = triangle.is_inside(point);
             }
         }
-        // if (!isInside) {
-        //     return -minDistance;
-        // }
+        if (!isInside) {
+            return -minDistance;
+        }
         return minDistance;
     }
 };

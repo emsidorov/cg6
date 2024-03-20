@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cassert>
 #include <glm/glm.hpp>
+#include <omp.h>
 
 
 class Matrix {
@@ -29,6 +30,8 @@ public:
 
     static Matrix transpose(const Matrix& m) {
         Matrix t(m.cols, m.rows);
+
+        #pragma omp parallel for
         for (size_t i = 0; i < m.rows; ++i) {
             for (size_t j = 0; j < m.cols; ++j) {
                 t(j, i) = m(i, j);
@@ -40,6 +43,8 @@ public:
     static Matrix multiply(const Matrix& a, const Matrix& b) {
         assert(a.cols == b.rows);
         Matrix result(a.rows, b.cols);
+
+        #pragma omp parallel for
         for (size_t i = 0; i < result.rows; ++i) {
             for (size_t j = 0; j < result.cols; ++j) {
                 float sum = 0.0;
@@ -55,6 +60,8 @@ public:
     Matrix operator+(const Matrix& rhs) const {
         assert(rows == rhs.rows && cols == rhs.cols); // Убедитесь, что размеры матриц совпадают
         Matrix result(rows, cols);
+        
+        #pragma omp parallel for
         for (size_t i = 0; i < rows; ++i) {
             for (size_t j = 0; j < cols; ++j) {
                 result(i, j) = (*this)(i, j) + rhs(i, j);
@@ -66,6 +73,8 @@ public:
     Matrix operator-(const Matrix& rhs) const {
         assert(rows == rhs.rows && cols == rhs.cols);
         Matrix result(rows, cols);
+        
+        #pragma omp parallel for
         for (size_t i = 0; i < rows; ++i) {
             for (size_t j = 0; j < cols; ++j) {
                 result(i, j) = (*this)(i, j) - rhs(i, j);
@@ -77,6 +86,8 @@ public:
     Matrix operator*(const Matrix& rhs) const {
         assert(rows == rhs.rows && cols == rhs.cols);
         Matrix result(rows, cols);
+        
+        #pragma omp parallel for
         for (size_t i = 0; i < rows; ++i) {
             for (size_t j = 0; j < cols; ++j) {
                 result(i, j) = (*this)(i, j) * rhs(i, j);
@@ -88,6 +99,8 @@ public:
     Matrix operator/(const Matrix& rhs) const {
         assert(rows == rhs.rows && cols == rhs.cols);
         Matrix result(rows, cols);
+        
+        #pragma omp parallel for
         for (size_t i = 0; i < rows; ++i) {
             for (size_t j = 0; j < cols; ++j) {
                 result(i, j) = (*this)(i, j) / rhs(i, j);
@@ -98,6 +111,8 @@ public:
 
     Matrix operator/(const float& val) const {
         Matrix result(rows, cols);
+        
+        #pragma omp parallel for
         for (size_t i = 0; i < rows; ++i) {
             for (size_t j = 0; j < cols; ++j) {
                 result(i, j) = (*this)(i, j) / val;
@@ -108,6 +123,8 @@ public:
 
     Matrix operator*(const float& val) const {
         Matrix result(rows, cols);
+        
+        #pragma omp parallel for
         for (size_t i = 0; i < rows; ++i) {
             for (size_t j = 0; j < cols; ++j) {
                 result(i, j) = (*this)(i, j) * val;
@@ -118,6 +135,8 @@ public:
 
     Matrix operator+(const float& val) const {
         Matrix result(rows, cols);
+        
+        #pragma omp parallel for
         for (size_t i = 0; i < rows; ++i) {
             for (size_t j = 0; j < cols; ++j) {
                 result(i, j) = (*this)(i, j) + val;
@@ -136,6 +155,8 @@ public:
 
     Matrix abs() const {
         Matrix result(rows, cols);
+
+        #pragma omp parallel for
         for (size_t i = 0; i < rows * cols; ++i) {
             result.data[i] = std::abs(data[i]);
         }
@@ -144,6 +165,8 @@ public:
 
     Matrix sqrt() const {
         Matrix result(rows, cols);
+
+        #pragma omp parallel for
         for (size_t i = 0; i < rows * cols; ++i) {
             result.data[i] = std::sqrt(data[i]);
         }

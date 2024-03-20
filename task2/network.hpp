@@ -15,6 +15,7 @@ public:
     virtual Matrix backward(const Matrix& grad) = 0;
     virtual void saveWeights(std::ofstream& file) = 0;
     virtual void printWeights() const = 0; // Добавленный метод
+    virtual void setLR(const float& lr) = 0;
 };
 
 
@@ -91,9 +92,15 @@ public:
         }
     }
 
+    void setLR(const float& lr) {
+        learning_rate = lr;
+    }
+
     Matrix forward(const Matrix& input) {
         input_cache = input;
         Matrix output = Matrix::multiply(input, Matrix::transpose(weights));
+
+        #pragma omp parallel for
         for (int i = 0; i < output.rows; ++i) {
             for (int j = 0; j < output.cols; ++j) {
                 output(i, j) += biases.data[j];
@@ -132,6 +139,8 @@ public:
 
         Matrix db(biases.rows, biases.cols);
         for (int j = 0; j < grad.cols; ++j) {
+
+            #pragma omp parallel for
             for (int i = 0; i < grad.rows; ++i) {
                 db.data[j] += grad(i, j);
             }
@@ -151,24 +160,17 @@ private:
 
 public:
     SineLayer(float w0 = 30.0) : w0(w0) {}
-
-    void loadWeights(std::ifstream& file) {
-        return;
-    }
-
-    void printWeights() const override {
-        return;
-    }
-
-    void saveWeights(std::ofstream& file) {
-        return;
-    }
-
+    void loadWeights(std::ifstream& file) {}
+    void printWeights() const override {}
+    void saveWeights(std::ofstream& file) {}
+    void setLR(const float& lr) {}
 
     Matrix forward(const Matrix& input) override {
         Matrix prod = input * w0;
         prod_cache = prod;
         Matrix output(input.rows, input.cols); // Создаём выходную матрицу такого же размера, как и входная
+        
+        #pragma omp parallel for
         for (size_t i = 0; i < input.data.size(); ++i) {
             output.data[i] = std::sin(prod.data[i]);
         }
@@ -177,6 +179,8 @@ public:
 
     Matrix backward(const Matrix& grad) {
         Matrix dSine_dInput(prod_cache.rows, prod_cache.cols);
+        
+        #pragma omp parallel for
         for (size_t i = 0; i < prod_cache.data.size(); ++i) {
             dSine_dInput.data[i] = w0 * std::cos(prod_cache.data[i]);
         }
@@ -270,6 +274,11 @@ public:
         }
     }
 
+    void setLR(const float& lr) {
+        for (auto layer : layers) {
+            layer->setLR(lr);
+        }
+    }
 
     Matrix forward(const Matrix& input) {
         Matrix output = input;
